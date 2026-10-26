@@ -4,7 +4,7 @@ namespace VotePreferentiel;
 
 public class VoteModel
 {
-    public List<Vote> Vote {get; set; } = new();
+    public List<Vote> Votes { get; set; } = new();
 }
 
 public class Vote

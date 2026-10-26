@@ -1,16 +1,49 @@
+using VotePreferentiel;
+
 namespace VotePreferentiel.Worker;
 
-public class Worker(ILogger<Worker> logger) : BackgroundService
+public class Worker : BackgroundService
 {
+    private const string VotesUrl = "https://raw.githubusercontent.com/JLou/dotnet-course/refs/heads/main/eval-1/votes.json";
+
+    private readonly ILogger<Worker> _logger;
+    private readonly VoteProvider _voteProvider;
+    private readonly IVoteCounter _voteCounter;
+    private readonly IHostApplicationLifetime _lifetime;
+
+    public Worker(
+        ILogger<Worker> logger,
+        VoteProvider voteProvider,
+        IVoteCounter voteCounter,
+        IHostApplicationLifetime lifetime)
+    {
+        _logger = logger;
+        _voteProvider = voteProvider;
+        _voteCounter = voteCounter;
+        _lifetime = lifetime;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            if (logger.IsEnabled(LogLevel.Information))
+            var voteModel = await _voteProvider.GetVoteAsync(VotesUrl, stoppingToken);
+
+            if (voteModel is null)
             {
-                logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                _logger.LogError("Le fichier vide ou invalide.");
             }
-            await Task.Delay(1000, stoppingToken);
+            else
+            {
+                var winner = _voteCounter.GetWinner(voteModel);
+                Console.WriteLine($"Le gagnant est : {winner}");
+            }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur lors du calcul du résultat.");
+        }
+
+        _lifetime.StopApplication();
     }
 }
